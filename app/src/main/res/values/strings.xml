@@ -1,0 +1,42 @@
+<resources>
+    <string name="app_name">DevLab Network Toolkit</string>
+
+    <!-- Converter Screen -->
+    <string name="tab_number_systems">Systemy Liczb</string>
+    <string name="tab_data_storage">Pamięć i Łącze</string>
+    <string name="tab_ip_converter">Konwerter IP</string>
+
+    <string name="title_number_systems">Pełny Konwerter Systemów Liczbowych</string>
+    <string name="label_decimal_value">Wartość Dziesiętna (DEC)</string>
+    <string name="label_binary">Dwójkowy (BIN):</string>
+    <string name="label_octal">Ósemkowy (OCT):</string>
+    <string name="label_decimal">Dziesiętny (DEC):</string>
+    <string name="label_hex">Szesnastkowy (HEX):</string>
+
+    <string name="title_data_storage">Waga Dysków i Pamięci</string>
+    <string name="label_disk_size">Deklarowana wielkość dysku / pamięci (GB)</string>
+    <string name="label_gib_system">Rzeczywiste GiB (System):</string>
+    <string name="label_tib_system">Rzeczywiste TiB (System):</string>
+    <string name="label_bytes_decimal">Bajtów (Decymalnie):</string>
+    <string name="title_speed_download">Prędkość Internetu i Czas Pobierania</string>
+    <string name="label_speed_mbps">Prędkość (Mb/s)</string>
+    <string name="label_file_size_gb">Rozmiar pliku (GB)</string>
+    <string name="label_speed_mb_s">Prędkość w MB/s:</string>
+    <string name="label_download_time">Czas pobierania pliku:</string>
+
+    <string name="title_ip_converter">Konwerter Formatu Adresów IPv4</string>
+    <string name="label_ipv4_address">Adres IPv4</string>
+    <string name="label_binary_form">Postać Binarna:</string>
+    <string name="label_hex_form">Postać Heksadecymalna:</string>
+    <string name="label_integer_val">Wartość Long / Integer:</string>
+    <string name="error_invalid_ip">Wprowadź poprawny adres IPv4</string>
+
+    <string name="share_report_title">Raport Pamięci i Łącza</string>
+    <string name="share_chooser_title">Eksportuj / Udostępnij przez</string>
+    <string name="data_report_header">--- RAPORT PRZELICZNIKA DANYCH ---</string>
+    <string name="report_storage">Pojemność dysku: %1$s GB = %2$s GiB (%3$s TiB)</string>
+    <string name="report_speed">Prędkość łącza: %1$s Mb/s (%2$s MB/s)</string>
+    <string name="report_file_size">Rozmiar pliku: %1$s GB</string>
+    <string name="report_download_time">Szacowany czas pobierania: %1$s</string>
+    <string name="content_desc_share">Udostępnij raport</string>
+</resources>
