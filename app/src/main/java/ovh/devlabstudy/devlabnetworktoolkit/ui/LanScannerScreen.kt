@@ -21,6 +21,7 @@ import kotlinx.coroutines.*
 import ovh.devlabstudy.devlabnetworktoolkit.billing.BillingManager
 import ovh.devlabstudy.devlabnetworktoolkit.util.LicenseManager
 import java.io.File
+import java.net.ConnectException
 import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.InetAddress
@@ -28,6 +29,7 @@ import java.net.InetSocketAddress
 import java.net.NetworkInterface
 import java.net.Socket
 import java.util.Locale
+import java.util.concurrent.atomic.AtomicInteger
 
 data class LanDevice(
     val ip: String,
@@ -299,6 +301,7 @@ fun getWifiSubnetDetails(context: Context): WifiSubnetInfo {
     val subnetBase = wifiIp.substringBeforeLast(".")
 
     val wm = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+    @Suppress("DEPRECATION")
     val dhcp = wm.dhcpInfo
     val gatewayIp = if (dhcp != null && dhcp.gateway != 0) {
         String.format(
@@ -328,6 +331,7 @@ fun getWifiSubnetDetails(context: Context): WifiSubnetInfo {
     )
 }
 
+@OptIn(ExperimentalCoroutinesApi::class)
 suspend fun scanSubnetTargeted(
     wifiInfo: WifiSubnetInfo,
     gatewayIp: String,
@@ -335,62 +339,79 @@ suspend fun scanSubnetTargeted(
     isPremium: Boolean,
     onProgress: (Float) -> Unit
 ): List<LanDevice> = withContext(Dispatchers.IO) {
-    val arpMap = getArpTable()
-    val foundDevices = mutableListOf<LanDevice>()
-
     val maxParallelism = if (isPremium) 100 else 8
     val dispatcher = Dispatchers.IO.limitedParallelism(maxParallelism)
 
     val subnetsToScan = if (wifiInfo.isClassA16) {
-        (0..15).map { "${wifiInfo.firstTwoOctets}.$it" } + listOf("${wifiInfo.firstTwoOctets}.100", "${wifiInfo.firstTwoOctets}.254")
+        (0..15).map { "${wifiInfo.firstTwoOctets}.$it" } +
+                listOf("${wifiInfo.firstTwoOctets}.100", "${wifiInfo.firstTwoOctets}.254")
     } else {
         listOf(wifiInfo.subnetBase)
     }
 
-    val totalSubnets = subnetsToScan.size
-    var completedSubnets = 0
+    val allIps = subnetsToScan.flatMap { base -> (1..254).map { "$base.$it" } }
+    val total = allIps.size
+    val done = AtomicInteger(0)
 
-    for (base in subnetsToScan) {
-        ensureActive()
-        val deferreds = (1..254).map { last ->
-            async(dispatcher) {
-                val ip = "$base.$last"
-                val isSelf = (ip == selfIp)
-                val startTime = System.currentTimeMillis()
+    val devices = allIps.map { ip ->
+        async(dispatcher) {
+            val device = probeHost(ip, gatewayIp, selfIp)
+            val d = done.incrementAndGet()
+            if (d % 10 == 0 || d == total) {
+                withContext(Dispatchers.Main) { onProgress(d.toFloat() / total) }
+            }
+            device
+        }
+    }.awaitAll().filterNotNull()
 
-                try {
-                    val address = InetAddress.getByName(ip)
-                    val reachable = isSelf || address.isReachable(120) || isPortOpen(ip, 80, 80) || isPortOpen(ip, 445, 80)
+    // ARP czytamy dopiero po skanowaniu, gdy system zdążył go wypełnić
+    val arp = getArpTable()
+    devices
+        .map { dev -> arp[dev.ip]?.let { dev.copy(mac = it) } ?: dev }
+        .sortedBy { ipToLong(it.ip) }
+}
 
-                    if (reachable) {
-                        val time = if (isSelf) 0L else System.currentTimeMillis() - startTime
-                        val mac = arpMap[ip] ?: "Brak (Android API)"
+private fun probeHost(ip: String, gatewayIp: String, selfIp: String): LanDevice? {
+    val isSelf = ip == selfIp
+    val startTime = System.currentTimeMillis()
+    return try {
+        val address = InetAddress.getByName(ip)
+        val alive = isSelf ||
+                address.isReachable(250) ||
+                tcpAlive(ip, 80, 100) ||
+                tcpAlive(ip, 443, 100) ||
+                tcpAlive(ip, 445, 100)
+        if (!alive) return null
 
-                        var hostName = getNetBIOSName(ip)
-                        if (hostName == "Brak nazwy" || hostName.isEmpty()) {
-                            hostName = try {
-                                val canonical = address.canonicalHostName
-                                if (canonical != ip) canonical else address.hostName
-                            } catch (_: Exception) { "Brak nazwy" }
-                        }
+        val time = if (isSelf) 0L else System.currentTimeMillis() - startTime
 
-                        val vendor = identifyWithFingerprint(ip, gatewayIp, isSelf, hostName)
-                        LanDevice(ip, hostName, mac, vendor, time, isSelf)
-                    } else null
-                } catch (_: Exception) { null }
+        var hostName = getNetBIOSName(ip)
+        if (hostName == "Brak nazwy" || hostName.isEmpty()) {
+            hostName = try {
+                val canonical = address.canonicalHostName
+                if (canonical != ip) canonical else address.hostName
+            } catch (_: Exception) {
+                "Brak nazwy"
             }
         }
 
-        val results = deferreds.awaitAll().filterNotNull()
-        foundDevices.addAll(results)
-
-        completedSubnets++
-        withContext(Dispatchers.Main) {
-            onProgress(completedSubnets.toFloat() / totalSubnets)
-        }
+        val vendor = identifyWithFingerprint(ip, gatewayIp, isSelf, hostName)
+        LanDevice(ip, hostName, "Brak (Android API)", vendor, time, isSelf)
+    } catch (_: Exception) {
+        null
     }
+}
 
-    return@withContext foundDevices.sortedBy { ipToLong(it.ip) }
+/** true, gdy port otwarty LUB host odrzucił połączenie (RST), czyli host żyje. */
+private fun tcpAlive(ip: String, port: Int, timeoutMs: Int): Boolean {
+    return try {
+        Socket().use { it.connect(InetSocketAddress(ip, port), timeoutMs) }
+        true
+    } catch (e: ConnectException) {
+        e.message?.contains("refused", ignoreCase = true) == true
+    } catch (_: Exception) {
+        false
+    }
 }
 
 fun ipToLong(ip: String): Long {
@@ -401,9 +422,7 @@ fun ipToLong(ip: String): Long {
 
 fun isPortOpen(ip: String, port: Int, timeoutMs: Int): Boolean {
     return try {
-        val socket = Socket()
-        socket.connect(InetSocketAddress(ip, port), timeoutMs)
-        socket.close()
+        Socket().use { it.connect(InetSocketAddress(ip, port), timeoutMs) }
         true
     } catch (_: Exception) {
         false
@@ -421,7 +440,11 @@ fun identifyWithFingerprint(ip: String, gatewayIp: String, isSelf: Boolean, host
     if (lowerHost.contains("mikrotik")) return if (ip == gatewayIp) "Router MikroTik" else "Switch / AP MikroTik"
     if (lowerHost.contains("synology") || lowerHost.contains("qnap")) return "Serwer NAS"
     if (lowerHost.contains("raspberry")) return "Raspberry Pi"
-    if (lowerHost.contains("gaming") || lowerHost.contains("pc") || lowerHost.contains("desktop")) return "Komputer PC (Windows)"
+    if (lowerHost.contains("gaming") ||
+        lowerHost == "pc" ||
+        lowerHost.startsWith("pc-") ||
+        lowerHost.startsWith("desktop-")
+    ) return "Komputer PC (Windows)"
 
     // 2. Kontrola portów usługowych
     val hasProxmoxPort = isPortOpen(ip, 8006, 80)
@@ -458,36 +481,33 @@ fun identifyWithFingerprint(ip: String, gatewayIp: String, isSelf: Boolean, host
 
 fun getNetBIOSName(ip: String): String {
     return try {
-        val socket = DatagramSocket()
-        socket.soTimeout = 120
+        DatagramSocket().use { socket ->
+            socket.soTimeout = 150
 
-        val query = byteArrayOf(
-            0x80.toByte(), 0x94.toByte(), 0x00, 0x00, 0x00, 0x01, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, 0x20, 0x43, 0x4B, 0x41, 0x41, 0x41,
-            0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41,
-            0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41,
-            0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x00, 0x00, 0x21, 0x00, 0x01
-        )
+            val query = byteArrayOf(
+                0x80.toByte(), 0x94.toByte(), 0x00, 0x00, 0x00, 0x01, 0x00, 0x00,
+                0x00, 0x00, 0x00, 0x00, 0x20, 0x43, 0x4B, 0x41, 0x41, 0x41,
+                0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41,
+                0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41,
+                0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x00, 0x00, 0x21, 0x00, 0x01
+            )
 
-        val address = InetAddress.getByName(ip)
-        val packet = DatagramPacket(query, query.size, address, 137)
-        socket.send(packet)
+            val address = InetAddress.getByName(ip)
+            socket.send(DatagramPacket(query, query.size, address, 137))
 
-        val buffer = ByteArray(1024)
-        val receivePacket = DatagramPacket(buffer, buffer.size)
-        socket.receive(receivePacket)
-        socket.close()
+            val buffer = ByteArray(1024)
+            val receivePacket = DatagramPacket(buffer, buffer.size)
+            socket.receive(receivePacket)
 
-        if (receivePacket.length > 57) {
-            val numberOfNames = buffer[56].toInt() and 0xFF
-            if (numberOfNames > 0) {
-                val nameBytes = ByteArray(15)
-                System.arraycopy(buffer, 57, nameBytes, 0, 15)
-                val rawName = String(nameBytes, Charsets.US_ASCII).trim()
-                if (rawName.isNotBlank()) return rawName
+            if (receivePacket.length > 71) {
+                val numberOfNames = buffer[56].toInt() and 0xFF
+                if (numberOfNames > 0) {
+                    val rawName = String(buffer, 57, 15, Charsets.US_ASCII).trim()
+                    if (rawName.isNotBlank()) return rawName
+                }
             }
+            "Brak nazwy"
         }
-        "Brak nazwy"
     } catch (_: Exception) {
         "Brak nazwy"
     }
@@ -496,10 +516,11 @@ fun getNetBIOSName(ip: String): String {
 fun getArpTable(): Map<String, String> {
     val map = mutableMapOf<String, String>()
     try {
-        File("/proc/net/arp").forEachLine { line ->
-            val tokens = line.split(Regex("\\s+"))
-            if (tokens.size >= 4 && tokens[3] != "00:00:00:00:00:00") {
-                map[tokens[0]] = tokens[3].uppercase()
+        File("/proc/net/arp").readLines().drop(1).forEach { line ->
+            val t = line.trim().split(Regex("\\s+"))
+            // kolumny: IP, HW type, Flags, HW address, Mask, Device
+            if (t.size >= 4 && t[2] != "0x0" && t[3] != "00:00:00:00:00:00") {
+                map[t[0]] = t[3].uppercase()
             }
         }
     } catch (_: Exception) {}
