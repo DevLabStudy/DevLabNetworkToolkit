@@ -3,6 +3,7 @@ package ovh.devlabstudy.devlabnetworktoolkit.ui
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -10,8 +11,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.BufferedReader
-import java.io.InputStreamReader
+import java.net.Inet4Address
 import java.net.InetAddress
 
 @Composable
@@ -20,6 +20,12 @@ fun TracerouteScreen() {
     var traceLogs by remember { mutableStateOf(listOf<String>()) }
     var isTracing by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
+    val listState = rememberLazyListState()
+
+    // Automatyczne przewijanie na dół przy nowym logu
+    LaunchedEffect(traceLogs.size) {
+        if (traceLogs.isNotEmpty()) listState.animateScrollToItem(traceLogs.lastIndex)
+    }
 
     Column(
         modifier = Modifier
@@ -46,7 +52,7 @@ fun TracerouteScreen() {
                     isTracing = true
                     traceLogs = emptyList()
                     coroutineScope.launch {
-                        runNativeTraceroute(targetHost) { log -> traceLogs = traceLogs + log }
+                        runNativeTraceroute(targetHost.trim()) { log -> traceLogs = traceLogs + log }
                         isTracing = false
                     }
                 }
@@ -64,65 +70,96 @@ fun TracerouteScreen() {
             color = MaterialTheme.colorScheme.surfaceVariant,
             shape = MaterialTheme.shapes.medium
         ) {
-            LazyColumn(modifier = Modifier.padding(12.dp)) {
+            LazyColumn(state = listState, modifier = Modifier.padding(12.dp)) {
                 items(traceLogs) { log ->
-                    Text(log, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(vertical = 2.dp))
+                    Text(
+                        log,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(vertical = 2.dp)
+                    )
                 }
             }
         }
     }
 }
 
+private val ipv4Regex = Regex("""(\d{1,3}(?:\.\d{1,3}){3})""")
+private val fromRegex = Regex("""[Ff]rom\s+(\d{1,3}(?:\.\d{1,3}){3})""")
+private val timeRegex = Regex("""time[=<]\s*([\d.]+)\s*ms""")
+
 suspend fun runNativeTraceroute(host: String, onLog: (String) -> Unit) = withContext(Dispatchers.IO) {
+    suspend fun log(msg: String) = withContext(Dispatchers.Main) { onLog(msg) }
+
     try {
-        val targetAddr = InetAddress.getByName(host)
+        // Wymuszamy IPv4 – ping z TTL na IPv6 zwykle nie działa tak samo
+        val targetAddr = InetAddress.getAllByName(host).firstOrNull { it is Inet4Address }
+        if (targetAddr == null) {
+            log("Nie znaleziono adresu IPv4 dla: $host")
+            return@withContext
+        }
         val targetIp = targetAddr.hostAddress ?: host
-        withContext(Dispatchers.Main) { onLog("Cel: $host ($targetIp)") }
+        log("Cel: $host ($targetIp)")
 
-        val maxHops = 20
+        val maxHops = 30
+        var debugShown = false
+
         for (ttl in 1..maxHops) {
-            val startTime = System.currentTimeMillis()
-            val process = Runtime.getRuntime().exec("ping -c 1 -t $ttl -W 2 $targetIp")
-            val reader = BufferedReader(InputStreamReader(process.inputStream))
-            val errorReader = BufferedReader(InputStreamReader(process.errorStream))
+            val start = System.currentTimeMillis()
 
-            val output = StringBuilder()
-            var line: String?
-            while (reader.readLine().also { line = it } != null) {
-                output.append(line).append("\n")
-            }
-            while (errorReader.readLine().also { line = it } != null) {
-                output.append(line).append("\n")
-            }
-            process.waitFor()
-            val elapsedTime = System.currentTimeMillis() - startTime
+            val output = try {
+                val process = ProcessBuilder(
+                    "/system/bin/ping", "-c", "1", "-n", "-t", ttl.toString(), "-W", "2", targetIp
+                ).redirectErrorStream(true).start()
 
-            val fullOutput = output.toString()
-            val extractedIp = parseIpFromPing(fullOutput)
-
-            val logLine = when {
-                extractedIp != null -> "Hop $ttl: $extractedIp ($elapsedTime ms)"
-                fullOutput.contains("Time to live exceeded") || fullOutput.contains("Time Exceeded") -> {
-                    val ip = parseIpFromPing(fullOutput) ?: "Odpowiedź routera"
-                    "Hop $ttl: $ip ($elapsedTime ms)"
+                try {
+                    process.inputStream.bufferedReader().readText()
+                } finally {
+                    process.waitFor()
+                    process.destroy()
                 }
-                else -> "Hop $ttl: * * * (Upłynął limit czasu)"
+            } catch (e: Exception) {
+                log("Hop $ttl: Błąd uruchomienia ping (${e.localizedMessage ?: "Nieznany"})")
+                break
             }
 
-            withContext(Dispatchers.Main) { onLog(logLine) }
+            val elapsed = System.currentTimeMillis() - start
+            val lower = output.lowercase()
 
-            if (extractedIp == targetIp || fullOutput.contains("bytes from $targetIp")) {
-                withContext(Dispatchers.Main) { onLog("Trasa zakończona. Cel został osiągnięty.") }
-                break
+            val ttlExceeded = lower.contains("time to live exceeded") ||
+                    lower.contains("ttl exceeded") ||
+                    lower.contains("time exceeded")
+
+            // Odpowiedź od routera pośredniego
+            val routerIp = fromRegex.find(output)?.groupValues?.get(1)
+                ?: if (ttlExceeded) ipv4Regex.find(output)?.groupValues?.get(1) else null
+
+            // Odpowiedź od celu (echo reply)
+            val reachedTarget = !ttlExceeded &&
+                    (lower.contains("bytes from") || lower.contains("1 received")) &&
+                    !lower.contains("100% packet loss")
+
+            when {
+                reachedTarget -> {
+                    val ms = timeRegex.find(output)?.groupValues?.get(1) ?: "$elapsed"
+                    log("Hop $ttl: $targetIp ($ms ms)")
+                    log("Trasa zakończona. Cel został osiągnięty.")
+                    break
+                }
+                routerIp != null -> {
+                    log("Hop $ttl: $routerIp ($elapsed ms)")
+                }
+                else -> {
+                    log("Hop $ttl: * * * (Upłynął limit czasu)")
+                    // Diagnostyka: pokaż surowy wynik ping tylko raz
+                    if (!debugShown) {
+                        debugShown = true
+                        val raw = output.trim().lines().take(4).joinToString(" | ")
+                        log("   [debug ping]: ${raw.ifBlank { "(pusta odpowiedź)" }}")
+                    }
+                }
             }
         }
     } catch (e: Exception) {
-        withContext(Dispatchers.Main) { onLog("Błąd wykonywania: ${e.message}") }
+        log("Błąd inicjalizacji: ${e.message}")
     }
-}
-
-fun parseIpFromPing(text: String): String? {
-    val regex = Regex("""(?:\d{1,3}\.){3}\d{1,3}""")
-    val matches = regex.findAll(text).map { it.value }.toList()
-    return matches.firstOrNull { it != "127.0.0.1" }
 }
