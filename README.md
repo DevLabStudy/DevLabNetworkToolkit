@@ -1,23 +1,83 @@
-# DevLab Network Toolkit
+<div align="center">
 
-> Autorska aplikacja mobilna na system Android stworzona w ramach projektu **DevLabStudy** przez Tobiasza Kajzer (projekt rozwijany edukacyjnie i hobbystycznie).
+# 🌐 DevLab Network Toolkit
+
+**Zestaw narzędzi sieciowych na Androida – diagnostyka i analiza sieci prosto z kieszeni.**
+
+![Platform](https://img.shields.io/badge/platform-Android-3DDC84?logo=android&logoColor=white)
+![Kotlin](https://img.shields.io/badge/Kotlin-Jetpack%20Compose-7F52FF?logo=kotlin&logoColor=white)
+![License](https://img.shields.io/badge/license-MIT-blue)
+![Release](https://img.shields.io/github/v/release/[TWOJ_LOGIN]/[NAZWA_REPO])
+
+[📥 Pobierz APK](https://www.devlabstudy.ovh/phone/) • [🌍 Strona projektu](https://www.devlabstudy.ovh/) • [🐛 Zgłoś błąd](../../issues)
+
+</div>
 
 ---
 
-## O projekcie
-DevLab Network Toolkit to zestaw narzędzi sieciowych zaprojektowany z myślą o diagnostyce i analizie lokalnych połączeń, adresacji IP oraz testowaniu komponentów sieciowych bezpośrednio ze smartfona.
+## 📖 O projekcie
 
-## Model Działania (Freemium)
-Aplikacja została udostępniona w modelu demonstracyjnym:
-* **Wersja Free:** Zapewnia podstawową funkcjonalność z celowo wprowadzonimi ograniczeniami prędkości i przepustowości (sztuczne spowolnienie wybranych operacji) w celach testowych.
-* **Wersja Pełna:** Odblokowuje pełną moc narzędzi bez limitów wydajnościowych.
+**DevLab Network Toolkit** to aplikacja dla administratorów, studentów IT i hobbystów sieci. Pozwala zdiagnozować sieć lokalną, sprawdzić trasę pakietów i znaleźć urządzenia w LAN bez komputera i bez roota.
 
-## Pobieranie i Instalacja
-Gotowy plik instalacyjny **APK** do pobrania bezpośrednio na urządzenie z systemem Android:
-👉 **[Pobierz najnowsze APK (Google Drive)](https://drive.google.com/file/d/1xdTBBCe0W4w71GezUI-I0fhwHYADkG2y/view?usp=sharing)**
+Projekt powstał w ramach **DevLabStudy** jako autorski projekt edukacyjny i hobbystyczny, rozwijany przez **Tobiasza Kajzera**.
 
-## Licencja
+## 🧰 Funkcje
+
+| Narzędzie | Opis |
+|---|---|
+| 🔍 **Skaner LAN** | Wykrywa urządzenia w podsieci, pokazuje IP, nazwę hosta (NetBIOS / DNS), typ urządzenia i czas odpowiedzi |
+| 🛰️ **Traceroute** | Śledzi trasę pakietów do domeny lub adresu IP, hop po hopie |
+| [🔧 Kolejne narzędzie] | [Krótki opis] |
+| [🔧 Kolejne narzędzie] | [Krótki opis] |
+
+### Skaner LAN – szczegóły
+- Automatyczne wykrywanie podsieci Wi-Fi i bramy
+- Rozpoznawanie typów urządzeń: router, switch/AP, serwer NAS, Proxmox, Jellyfin/Plex, serwery baz danych, komputery Windows, Raspberry Pi
+- Wielowątkowe skanowanie z paskiem postępu
+
+## 💎 Model Freemium
+
+| | **Free** | **PRO** |
+|---|:---:|:---:|
+| Wszystkie narzędzia | ✅ | ✅ |
+| Skaner LAN – wątki równolegle | 8 | **100** |
+| Czas skanowania podsieci | wolniejszy | **kilka sekund** |
+
+Wersja Free ma celowo ograniczoną wydajność wybranych operacji. Wersję PRO można odblokować w aplikacji (Google Play) lub kluczem licencyjnym.
+
+## 📥 Pobieranie i instalacja
+
+1. Wejdź na **[devlabstudy.ovh/phone](https://www.devlabstudy.ovh/phone/)** i pobierz najnowszy plik `.apk`
+   (lub skorzystaj z zakładki [Releases](../../releases))
+2. Na telefonie zezwól na instalację z nieznanych źródeł
+3. Otwórz pobrany plik i zainstaluj aplikację
+
+**Wymagania:** Android [minimalna wersja] lub nowszy, połączenie z Wi-Fi (dla skanera LAN).
+
+## ⚠️ Ograniczenia
+- Od Androida 10 system blokuje aplikacjom dostęp do adresów MAC innych urządzeń
+- Traceroute może nie działać w sieciach blokujących ICMP oraz na emulatorze
+- Skaner LAN działa tylko w sieciach IPv4
+
+## 🛠️ Technologie
+- **Kotlin** + **Jetpack Compose** (Material 3)
+- Coroutines (skanowanie równoległe)
+- Google Play Billing
+- Supabase (licencje)
+
+## 🗺️ Plan rozwoju
+- [ ] Wykrywanie rzeczywistej maski podsieci
+- [ ] Eksport wyników skanowania
+- [ ] [Twój pomysł]
+
+## 📄 Licencja
+
 Projekt jest udostępniony na licencji **MIT**. Szczegóły znajdziesz w pliku [LICENSE](LICENSE).
 
 ---
-*DevLabStudy 2026 — Wszystkie prawa zastrzeżone.*
+
+<div align="center">
+
+**DevLabStudy 2026** • Stworzone przez Tobiasza Kajzera
+
+</div>
