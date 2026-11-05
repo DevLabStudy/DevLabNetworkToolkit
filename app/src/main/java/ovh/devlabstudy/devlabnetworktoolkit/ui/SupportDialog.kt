@@ -38,7 +38,7 @@ fun SupportDialog(onDismiss: () -> Unit) {
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(modifier = Modifier.padding(12.dp)) {
-                        Text("DevLab Network Toolkit v1.1", style = MaterialTheme.typography.titleSmall)
+                        Text("DevLab Network Toolkit v1.1.1", style = MaterialTheme.typography.titleSmall)
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             "Wszechstronny pakiet narzędzi diagnostycznych i analitycznych zaprojektowany z myślą o administratorach sieci, studentach IT oraz entuzjastach home-labów. Aplikacja umożliwia natychmiastowe analizowanie lokalnych podsieci, obliczenia CIDR/VLSM, skanowanie portów oraz zarządzanie urządzeniami w sieci LAN.",

@@ -105,6 +105,7 @@ fun MainAppScreen() {
     var isEditMode by remember { mutableStateOf(false) }
     var showProDialog by remember { mutableStateOf(false) }
     var showProThankYouDialog by remember { mutableStateOf(false) }
+    var showSupportDialog by remember { mutableStateOf(false) }
     var selectedForSwapIndex by remember { mutableStateOf<Int?>(null) }
 
     val sheetState = rememberStandardBottomSheetState(
@@ -141,6 +142,10 @@ fun MainAppScreen() {
         ProThankYouDialog(onDismiss = { showProThankYouDialog = false })
     }
 
+    if (showSupportDialog) {
+        SupportDialog(onDismiss = { showSupportDialog = false })
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -151,6 +156,13 @@ fun MainAppScreen() {
                     )
                 },
                 actions = {
+                    IconButton(onClick = { showSupportDialog = true }) {
+                        Icon(
+                            Icons.Default.HelpOutline,
+                            contentDescription = "Wsparcie i kontakt"
+                        )
+                    }
+
                     IconButton(onClick = {
                         NetworkBackgroundService.startPingMonitor(context, "8.8.8.8")
                     }) {
@@ -844,9 +856,19 @@ fun ProPaywallDialog(
                 ) {
                     OutlinedTextField(
                         value = keyInput,
-                        onValueChange = { keyInput = it.uppercase() },
+                        onValueChange = { keyInput = it.uppercase().filter { char -> !char.isWhitespace() } },
                         label = { Text("Masz kod promocyjny?", fontSize = 12.sp) },
                         singleLine = true,
+                        trailingIcon = {
+                            if (keyInput.isNotEmpty()) {
+                                IconButton(onClick = { keyInput = "" }) {
+                                    Icon(
+                                        Icons.Default.Clear,
+                                        contentDescription = "Wyczyść kod"
+                                    )
+                                }
+                            }
+                        },
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = Color(0xFFFFD700),
                             unfocusedBorderColor = Color.DarkGray,

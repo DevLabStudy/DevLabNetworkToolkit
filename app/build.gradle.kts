@@ -3,6 +3,15 @@ plugins {
     alias(libs.plugins.kotlin.compose)
 }
 
+import java.util.Properties
+
+val localProperties = Properties().apply {
+    val localPropertiesFile = rootProject.file("local.properties")
+    if (localPropertiesFile.exists()) {
+        localPropertiesFile.inputStream().use(::load)
+    }
+}
+
 android {
     namespace = "ovh.devlabstudy.devlabnetworktoolkit"
     buildFeatures {
@@ -24,12 +33,11 @@ android {
         versionName = "1.1.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        val supabaseUrl = project.providers.gradleProperty("supabaseUrl")
-            .orElse("https://clizjpihxmtoaywvosom.supabase.co")
-            .get()
-        val supabaseAnonKey = project.providers.gradleProperty("supabaseAnonKey")
-            .orElse("")
-            .get()
+        val supabaseUrl = localProperties.getProperty(
+            "supabaseUrl",
+            "https://clizjpihxmtoaywvosom.supabase.co"
+        )
+        val supabaseAnonKey = localProperties.getProperty("supabaseAnonKey", "")
         buildConfigField("String", "SUPABASE_URL", "\"$supabaseUrl\"")
         buildConfigField("String", "SUPABASE_ANON_KEY", "\"$supabaseAnonKey\"")
     }
