@@ -72,7 +72,9 @@ enum class AppTool(
     DNS_LOOKUP("DNS", "Rekordy A, AAAA, MX", Icons.Default.Dns),
     WOL("Wake-on-LAN", "Zdalnie włączaj PC", Icons.Default.PowerSettingsNew),
     SPEEDTEST("Test Łącza", "Pomiary Jitteru", Icons.Default.Speed),
-    PASSWORD_TOOL("Hasła & Hash", "Generator haseł i konwertery", Icons.Default.Lock)
+    PASSWORD_TOOL("Hasła & Hash", "Generator haseł i konwertery", Icons.Default.Lock),
+    HTTP_INSPECTOR("HTTP Inspector", "Status i nagłówki URL", Icons.Default.Language),
+    PUBLIC_IP("Publiczne IP", "Sprawdź adres widoczny w internecie", Icons.Default.Public)
 }
 
 enum class ProPlan {
@@ -412,6 +414,8 @@ fun MainAppScreen() {
                     AppTool.WOL -> WolScreen()
                     AppTool.SPEEDTEST -> SpeedtestScreen()
                     AppTool.PASSWORD_TOOL -> PasswordAndHashScreen()
+                    AppTool.HTTP_INSPECTOR -> HttpInspectorScreen()
+                    AppTool.PUBLIC_IP -> PublicIpScreen()
                 }
             }
         }

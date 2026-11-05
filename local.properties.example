@@ -1,0 +1,4 @@
+# Copy this file to local.properties and fill in the public Supabase anon key.
+# Never put the service_role key in the Android app.
+supabaseUrl=https://clizjpihxmtoaywvosom.supabase.co
+supabaseAnonKey=YOUR_SUPABASE_ANON_KEY

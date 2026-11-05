@@ -65,6 +65,29 @@ Wersja Free ma celowo ograniczoną wydajność wybranych operacji. Wersję PRO m
 - Google Play Billing
 - Supabase (licencje)
 
+## 🔐 Konfiguracja Supabase
+
+Klucz `anon` jest kluczem publicznym aplikacji, ale klucz `service_role` nigdy nie może
+trafić do APK. Przed zbudowaniem aplikacji:
+
+1. Skopiuj `local.properties.example` do `local.properties`.
+2. Wpisz publiczny klucz `anon` z Supabase jako `supabaseAnonKey`.
+3. W Supabase ustaw sekret `SUPABASE_SERVICE_ROLE_KEY` dla Edge Functions.
+4. Wdróż funkcję aktywacji:
+
+```bash
+supabase functions deploy activate-license
+```
+
+Aktywacja licencji odbywa się przez `supabase/functions/activate-license`, dzięki czemu
+klucz serwisowy pozostaje wyłącznie po stronie Supabase, a zapis użycia klucza jest
+wykonywany warunkowo (`is_used = false`).
+
+## 🧪 Dodatkowe narzędzia
+
+W aplikacji dostępne są również **HTTP Inspector** (kod odpowiedzi, czas i nagłówki)
+oraz **Publiczne IP**. Obie funkcje wymagają wyłącznie uprawnienia `INTERNET`.
+
 ## 🗺️ Plan rozwoju
 - [ ] Wykrywanie rzeczywistej maski podsieci
 - [ ] Eksport wyników skanowania

@@ -5,6 +5,11 @@ plugins {
 
 android {
     namespace = "ovh.devlabstudy.devlabnetworktoolkit"
+    buildFeatures {
+        buildConfig = true
+        compose = true
+    }
+
     compileSdk {
         version = release(36) {
             minorApiLevel = 1
@@ -19,6 +24,14 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        val supabaseUrl = project.providers.gradleProperty("supabaseUrl")
+            .orElse("https://clizjpihxmtoaywvosom.supabase.co")
+            .get()
+        val supabaseAnonKey = project.providers.gradleProperty("supabaseAnonKey")
+            .orElse("")
+            .get()
+        buildConfigField("String", "SUPABASE_URL", "\"$supabaseUrl\"")
+        buildConfigField("String", "SUPABASE_ANON_KEY", "\"$supabaseAnonKey\"")
     }
 
     buildTypes {
@@ -28,12 +41,10 @@ android {
             }
         }
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
-    }
-    buildFeatures {
-        compose = true
     }
 }
 
