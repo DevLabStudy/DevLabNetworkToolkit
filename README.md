@@ -70,7 +70,7 @@ Wersja Free ma celowo ograniczoną wydajność wybranych operacji. Wersję PRO m
 Klucz `anon` jest kluczem publicznym aplikacji, ale klucz `service_role` nigdy nie może
 trafić do APK. Przed zbudowaniem aplikacji:
 
-1. Skopiuj `local.properties.example` do `local.properties`.
+1. Skopiuj `local.properties.example` do `local.properties` w katalogu głównym projektu (obok `settings.gradle.kts`).
 2. Wpisz publiczny klucz `anon` z Supabase jako `supabaseAnonKey`.
 3. W Supabase ustaw sekret `SUPABASE_SERVICE_ROLE_KEY` dla Edge Functions.
 4. Wdróż funkcję aktywacji:
@@ -101,6 +101,6 @@ Projekt jest udostępniony na licencji **MIT**. Szczegóły znajdziesz w pliku [
 
 <div align="center">
 
-**DevLabStudy 2026** • Wersja 1.1.1 • Stworzone przez Tobiasza Kajzera
+**DevLabStudy 2026** • Wersja 1.1.2 • Stworzone przez Tobiasza Kajzera
 
 </div>

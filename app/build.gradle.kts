@@ -6,11 +6,28 @@ plugins {
 import java.util.Properties
 
 val localProperties = Properties().apply {
-    val localPropertiesFile = rootProject.file("local.properties")
-    if (localPropertiesFile.exists()) {
-        localPropertiesFile.inputStream().use(::load)
-    }
+    val localPropertiesFiles = listOf(
+        rootProject.file("local.properties"),
+        project.file("local.properties")
+    ).distinct()
+    localPropertiesFiles.firstOrNull { it.isFile }?.inputStream()?.use(::load)
 }
+
+val supabaseAnonKey = localProperties.getProperty("supabaseAnonKey", "").trim()
+if (supabaseAnonKey.isBlank()) {
+    logger.warn(
+        "Supabase anon key is not configured. Create local.properties in the project root " +
+            "with supabaseAnonKey=... before building a usable APK."
+    )
+}
+
+val supabaseUrl = localProperties.getProperty(
+    "supabaseUrl",
+    "https://clizjpihxmtoaywvosom.supabase.co"
+).trimEnd('/')
+
+fun escapeBuildConfig(value: String): String =
+    value.replace("\\", "\\\\").replace("\"", "\\\"")
 
 android {
     namespace = "ovh.devlabstudy.devlabnetworktoolkit"
@@ -29,17 +46,12 @@ android {
         applicationId = "ovh.devlabstudy.devlabnetworktoolkit"
         minSdk = 23
         targetSdk = 36
-        versionCode = 2
-        versionName = "1.1.1"
+        versionCode = 3
+        versionName = "1.1.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        val supabaseUrl = localProperties.getProperty(
-            "supabaseUrl",
-            "https://clizjpihxmtoaywvosom.supabase.co"
-        )
-        val supabaseAnonKey = localProperties.getProperty("supabaseAnonKey", "")
-        buildConfigField("String", "SUPABASE_URL", "\"$supabaseUrl\"")
-        buildConfigField("String", "SUPABASE_ANON_KEY", "\"$supabaseAnonKey\"")
+        buildConfigField("String", "SUPABASE_URL", "\"${escapeBuildConfig(supabaseUrl)}\"")
+        buildConfigField("String", "SUPABASE_ANON_KEY", "\"${escapeBuildConfig(supabaseAnonKey)}\"")
     }
 
     buildTypes {

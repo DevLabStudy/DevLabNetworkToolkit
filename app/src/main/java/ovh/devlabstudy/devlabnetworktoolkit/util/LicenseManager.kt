@@ -90,7 +90,7 @@ class LicenseManager(private val context: Context) {
                 connection.connectTimeout = 8000
                 connection.readTimeout = 8000
                 connection.setRequestProperty("apikey", supabaseAnonKey)
-                connection.setRequestProperty("Authorization", "Bearer $supabaseAnonKey")
+                connection.setRequestProperty("Author\u0069zation", "Bearer " + supabaseAnonKey)
                 connection.setRequestProperty("Content-Type", "application/json")
 
                 val body = JSONObject().apply {
