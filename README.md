@@ -7,7 +7,7 @@
 ![Platform](https://img.shields.io/badge/platform-Android-3DDC84?logo=android&logoColor=white)
 ![Kotlin](https://img.shields.io/badge/Kotlin-Jetpack%20Compose-7F52FF?logo=kotlin&logoColor=white)
 ![License](https://img.shields.io/badge/license-MIT-blue)
-![Release](https://img.shields.io/github/v/release/[TWOJ_LOGIN]/[NAZWA_REPO])
+![Release](https://img.shields.io/github/v/release/DevLabStudy/DevLabNetworkToolkit)
 
 [📥 Pobierz APK](https://www.devlabstudy.ovh/phone/) • [🌍 Strona projektu](https://www.devlabstudy.ovh/) • [🐛 Zgłoś błąd](../../issues)
 
@@ -101,6 +101,6 @@ Projekt jest udostępniony na licencji **MIT**. Szczegóły znajdziesz w pliku [
 
 <div align="center">
 
-**DevLabStudy 2026** • Stworzone przez Tobiasza Kajzera
+**DevLabStudy 2026** • Wersja 1.1.1 • Stworzone przez Tobiasza Kajzera
 
 </div>
